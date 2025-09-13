@@ -4,9 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 追加
+
+import 'package:frontend/services/auth_service.dart'; // 追加
+import 'package:frontend/screens/login_screen.dart'; // 追加
 
 // --- Data Model ---
 class Article {
+  final int id; // 追加
   final String title;
   final String url;
   final String? publishedDate;
@@ -15,6 +20,7 @@ class Article {
   final String? sentiment;
 
   Article({
+    required this.id, // 追加
     required this.title,
     required this.url,
     this.publishedDate,
@@ -25,6 +31,7 @@ class Article {
 
   factory Article.fromJson(Map<String, dynamic> json) {
     return Article(
+      id: json['id'], // 追加
       title: json['title'],
       url: json['url'],
       publishedDate: json['published_date'],
@@ -37,12 +44,19 @@ class Article {
 
 // --- API Service ---
 Future<List<Article>> fetchArticles(String category) async {
-  const String baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
-  final response = await http.get(Uri.parse('$baseUrl/articles/$category'));
+  const String baseUrl = kIsWeb ? 'http://localhost:8001' : 'http://10.0.2.2:8001';
+  final token = await AuthService.getToken(); // トークン取得
+  final response = await http.get(
+    Uri.parse('$baseUrl/api/articles/$category'),
+    headers: token != null ? {'Authorization': 'Bearer $token'} : {}, // ヘッダーにトークン追加
+  );
 
   if (response.statusCode == 200) {
     final List<dynamic> body = json.decode(utf8.decode(response.bodyBytes));
     return body.map((dynamic item) => Article.fromJson(item)).toList();
+  } else if (response.statusCode == 401) {
+    // 認証エラーの場合、ログイン画面へリダイレクト
+    throw Exception('Unauthorized. Please log in again.');
   } else {
     throw Exception('Failed to load articles for category $category');
   }
@@ -64,7 +78,47 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const AuthCheckScreen(), // 起動時に認証状態をチェックする画面を追加
+    );
+  }
+}
+
+// --- Auth Check Screen ---
+class AuthCheckScreen extends StatefulWidget {
+  const AuthCheckScreen({super.key});
+
+  @override
+  State<AuthCheckScreen> createState() => _AuthCheckScreenState();
+}
+
+class _AuthCheckScreenState extends State<AuthCheckScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final token = await AuthService.getToken();
+    if (mounted) {
+      if (token != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(), // 認証チェック中はローディング表示
+      ),
     );
   }
 }
@@ -100,6 +154,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Scaffold(
       appBar: AppBar(
         title: const Text('News Curation'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await AuthService.deleteToken();
+              if (mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+          ),
+        ], // ログアウトボタンを追加
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true, // タブが増えたのでスクロール可能にする

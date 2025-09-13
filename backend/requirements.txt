@@ -15,3 +15,12 @@ uvicorn==0.35.0
 beautifulsoup4
 httpx
 requests
+SQLAlchemy
+psycopg2-binary
+alembic
+pydantic-settings
+passlib[bcrypt]
+python-jose[cryptography]
+scikit-learn
+janome
+python-multipart

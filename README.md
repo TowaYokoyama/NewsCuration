@@ -63,4 +63,27 @@
    ```bash
    flutter run
    ```
+## アプリケーションの起動方法
+
+1.  **バックエンドの起動:**
+    プロジェクトのルートディレクトリ (`C:\dev\newsCuration`) で、以下のコマンドを実行します。
+    ```bash
+    docker compose up --build -d
+    ```
+    これにより、FastAPIサーバーとPostgreSQLデータベースがDockerコンテナとして起動します。
+
+2.  **フロントエンドの起動:**
+    `frontend` ディレクトリ (`C:\dev\newsCuration\frontend`) に移動し、以下のコマンドのいずれかを実行します。
+
+    *   **Webブラウザで起動する場合:**
+        ```bash
+        flutter run -d chrome
+        ```
+    *   **Androidエミュレータや実機で起動する場合:**
+        ```bash
+        flutter run
+        ```
+        (事前にAndroidエミュレータを起動しておくか、USBデバッグが有効なAndroidデバイスを接続しておく必要があります。)
+
+これで、アプリケーションが起動し、ログイン画面が表示されるはずです。
 # NewsCuration
