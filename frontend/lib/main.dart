@@ -133,7 +133,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  // "soccer" カテゴリを追加
+  late List<GlobalKey<_ArticleListViewState>> _tabKeys;
+
   final List<String> _categories = ['gamba_osaka', 'soccer', 'coffee', 'programming'];
   final List<String> _tabLabels = ['ガンバ大阪', 'サッカー全般', 'コーヒー', 'プログラミング'];
 
@@ -141,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: _categories.length, vsync: this);
+    _tabKeys = List.generate(_categories.length, (_) => GlobalKey<_ArticleListViewState>());
   }
 
   @override
@@ -149,12 +151,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  void _handleRefresh() {
+    // Get the state of the currently active ArticleListView and call its refresh method
+    _tabKeys[_tabController.index].currentState?.refreshArticles();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('News Curation'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _handleRefresh,
+            tooltip: 'Refresh Articles',
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -175,8 +187,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _categories.map((String category) {
-          return ArticleListView(category: category);
+        children: _categories.asMap().entries.map((entry) {
+          final index = entry.key;
+          final category = entry.value;
+          return ArticleListView(key: _tabKeys[index], category: category);
         }).toList(),
       ),
     );
@@ -199,6 +213,12 @@ class _ArticleListViewState extends State<ArticleListView> {
   void initState() {
     super.initState();
     futureArticles = fetchArticles(widget.category);
+  }
+
+  Future<void> refreshArticles() async {
+    setState(() {
+      futureArticles = fetchArticles(widget.category);
+    });
   }
 
   // URLを起動するメソッド

@@ -1,12 +1,12 @@
 # backend/core/recommender.py
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from janome.tokenizer import Tokenizer
-from sqlalchemy.orm import Session
-import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer #"textをTF=IDベクトルに変えるためのライブラリ"
+from sklearn.metrics.pairwise import cosine_similarity #コサイン類似度を計算する関数
+from janome.tokenizer import Tokenizer #日本語の形態素解析ライブらり
+from sqlalchemy.orm import Session #Db接続を持つsession 
+import numpy as np #numpy
 
-import crud
-import db_models as models
+import crud #自作のモジュール　dbのcrudまとめ
+import db_models as models #自作のdbモデル定義
 
 # Janome tokenizerの初期化
 t = Tokenizer()

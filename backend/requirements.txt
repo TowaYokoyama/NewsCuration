@@ -24,3 +24,4 @@ python-jose[cryptography]
 scikit-learn
 janome
 python-multipart
+feedparser

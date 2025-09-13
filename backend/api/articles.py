@@ -4,21 +4,19 @@ from sqlalchemy.orm import Session
 from typing import List
 import logging
 import asyncio
-import requests
+import random
 
 import crud
 import schemas
 import db_models as models
 from core.db import get_db
 from core.security import get_current_user
-# Add the recommender import
 from core import recommender
-from scraper import scrape_programming_news
+from scraper import scrape_zenn_news, scrape_qiita_news, scrape_soccer_news
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# --- Data Fetching Logic (Copied from main.py) ---
 async def get_articles_for_category(category: str) -> List[schemas.Article]:
     """
     カテゴリに基づいて、適切なソースから記事を取得するディスパッチャ関数。
@@ -26,11 +24,26 @@ async def get_articles_for_category(category: str) -> List[schemas.Article]:
     logger.info(f"Fetching articles for category: {category}")
     
     if category == "programming":
-        # Scrape articles and convert them to schemas.Article
-        scraped_articles = scrape_programming_news()
+        # ZennとQiitaから並行して記事をスクレイピング
+        zenn_task = scrape_zenn_news()
+        qiita_task = scrape_qiita_news()
+        results = await asyncio.gather(zenn_task, qiita_task)
+        
+        # 両方の結果を一つのリストに結合
+        all_articles = results[0] + results[1]
+        logger.info(f"Total articles scraped: {len(all_articles)}")
+
+        if not all_articles:
+            return []
+
+        # 取得した記事からランダムに15件をサンプリング（15件未満の場合は全件）
+        sample_size = min(15, len(all_articles))
+        sampled_articles = random.sample(all_articles, sample_size)
+        
+        # APIレスポンス用のスキーマに変換
         return [
             schemas.Article(
-                id=9000 + i,  # Assign a dummy unique ID
+                id=10000 + i,  # Assign a dummy unique ID
                 title=article.title,
                 url=article.url,
                 published_date=article.published_date,
@@ -38,11 +51,11 @@ async def get_articles_for_category(category: str) -> List[schemas.Article]:
                 thumbnail_url=article.thumbnail_url,
                 sentiment=article.sentiment,
             )
-            for i, article in enumerate(scraped_articles)
+            for i, article in enumerate(sampled_articles)
         ]
     
-    # 他のかてごりは、引き続きダミーデータを返す
-    await asyncio.sleep(0.5)  # 非同期処理のシミュレーション
+    # 他のカテゴリはダミーデータを返す
+    await asyncio.sleep(0.5)
 
     gamba_article = schemas.Article(
         id=1,
@@ -77,11 +90,23 @@ async def get_articles_for_category(category: str) -> List[schemas.Article]:
     if category == "gamba_osaka":
         return [gamba_article]
     elif category == "soccer":
-        return [soccer_article]
+        scraped_articles = await scrape_soccer_news()
+        return [
+            schemas.Article(
+                id=20000 + i,  # Assign a dummy unique ID
+                title=article.title,
+                url=article.url,
+                published_date=article.published_date,
+                summary=article.summary,
+                thumbnail_url=article.thumbnail_url,
+                sentiment=article.sentiment,
+            )
+            for i, article in enumerate(scraped_articles)
+        ]
     elif category == "coffee":
         return [coffee_article]
     else:
-        return [] # 不明なカテゴリの場合は空のリストを返す
+        return []
 
 @router.get("/{category}", response_model=List[schemas.Article])
 async def get_articles(category: str, current_user: models.User = Depends(get_current_user)):
@@ -108,9 +133,8 @@ def add_favorite(article_id: int, db: Session = Depends(get_db), current_user: m
     article = crud.get_article(db, article_id=article_id)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
-    # Check if already favorited to avoid duplicates, although the relationship should handle it.
     if article in current_user.favorite_articles:
-        return current_user # Or raise a 400 error
+        return current_user
     return crud.favorite_article(db=db, user=current_user, article=article)
 
 @router.delete("/{article_id}/favorite", response_model=schemas.User)
