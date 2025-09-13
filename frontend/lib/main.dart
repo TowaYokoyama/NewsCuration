@@ -135,8 +135,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late TabController _tabController;
   late List<GlobalKey<_ArticleListViewState>> _tabKeys;
 
-  final List<String> _categories = ['gamba_osaka', 'soccer', 'coffee', 'programming'];
-  final List<String> _tabLabels = ['ガンバ大阪', 'サッカー全般', 'コーヒー', 'プログラミング'];
+  final List<String> _categories = ['coffee', 'cooking', 'programming'];
+  final List<String> _tabLabels = ['コーヒー', '料理', 'プログラミング'];
 
   @override
   void initState() {

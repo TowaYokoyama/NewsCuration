@@ -10,10 +10,45 @@ import feedparser
 import asyncio
 
 from models import Article
+from core.config import settings
 
 # ロガーを設定
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+async def get_rakuten_recipes(category_id: str) -> List[Article]:
+    """
+    楽天レシピカテゴリ別ランキングAPIからレシピ情報を取得します。
+    """
+    logger.debug(f"get_rakuten_recipes called for category_id: {category_id}")
+    app_id = "1063462595265589229" # Using user-provided ID for this session
+
+    url = f"https://app.rakuten.co.jp/services/api/Recipe/CategoryRanking/20170426?applicationId={app_id}&categoryId={category_id}"
+    articles = []
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10.0)
+            response.raise_for_status()
+            data = response.json()
+
+        logger.debug(f"Successfully fetched {len(data['result'])} recipes from Rakuten API.")
+
+        for item in data['result']:
+            article = Article(
+                title=item.get('recipeTitle', 'No Title'),
+                url=item.get('recipeUrl'),
+                published_date=item.get('updateTime'),
+                summary=item.get('recipeDescription'),
+                thumbnail_url=item.get('foodImageUrl'),
+                sentiment='neutral'
+            )
+            articles.append(article)
+
+    except Exception as e:
+        logger.error(f"[ERROR] An error occurred during Rakuten API call: {e}")
+        return []
+
+    return articles
 
 async def scrape_zenn_news() -> List[Article]:
     """
@@ -93,41 +128,6 @@ async def scrape_qiita_news() -> List[Article]:
 
     except Exception as e:
         logger.error(f"[ERROR] An error occurred during Qiita scraping: {e}")
-        return []
-
-    return articles
-
-async def scrape_soccer_news() -> List[Article]:
-    """
-    ゲキサカのRSSフィードからサッカーニュースを非同期で取得します。
-    """
-    logger.debug("scrape_soccer_news called.")
-    url = "https://web.gekisaka.jp/pickup/news/category?menu=new&rss=true"
-    articles = []
-    try:
-        # feedparser is synchronous, run it in a thread to avoid blocking asyncio loop
-        loop = asyncio.get_event_loop()
-        feed = await loop.run_in_executor(None, feedparser.parse, url)
-        
-        logger.debug(f"Found {len(feed.entries)} articles in Gekisaka RSS feed.")
-
-        for entry in feed.entries:
-            thumbnail_url = None
-            if 'media_thumbnail' in entry and entry.media_thumbnail:
-                thumbnail_url = entry.media_thumbnail[0].get('url')
-
-            article = Article(
-                title=entry.title,
-                url=entry.link,
-                published_date=entry.get('published'),
-                summary=entry.get('summary'),
-                thumbnail_url=thumbnail_url,
-                sentiment='neutral'
-            )
-            articles.append(article)
-
-    except Exception as e:
-        logger.error(f"[ERROR] An error occurred during Gekisaka RSS fetching: {e}")
         return []
 
     return articles
