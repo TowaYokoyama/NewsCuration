@@ -13,6 +13,7 @@ from core.db import get_db
 from core.security import get_current_user
 # Add the recommender import
 from core import recommender
+from scraper import scrape_programming_news
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -25,15 +26,19 @@ async def get_articles_for_category(category: str) -> List[schemas.Article]:
     logger.info(f"Fetching articles for category: {category}")
     
     if category == "programming":
-        # This is a debug section and should be replaced with actual scraping
+        # Scrape articles and convert them to schemas.Article
+        scraped_articles = scrape_programming_news()
         return [
             schemas.Article(
-                id=999, # Dummy ID
-                title="DEBUG: Direct Requests Test Article",
-                url="https://debug.example.com/direct-requests",
-                summary="This article is returned from a direct requests.get() call in api/articles.py.",
-                sentiment="neutral"
+                id=9000 + i,  # Assign a dummy unique ID
+                title=article.title,
+                url=article.url,
+                published_date=article.published_date,
+                summary=article.summary,
+                thumbnail_url=article.thumbnail_url,
+                sentiment=article.sentiment,
             )
+            for i, article in enumerate(scraped_articles)
         ]
     
     # 他のかてごりは、引き続きダミーデータを返す
