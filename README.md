@@ -1,6 +1,9 @@
 # News Curation App
 
-自分用のニュース・記事キュレーションアプリです。バックエンドはPython (FastAPI)、フロントエンドはFlutterで構築されています。
+自分用のニュース・記事キュレーションアプリです。バックエンドはPython (FastAPI)、フロントエンドはFlutter、データベースはpostgre、インフラはdockerで構築。
+
+## 動作デモ
+![demo](assets/ezgif-3b3e53bafb6a23.gif)
 
 ## 必要なもの
 
