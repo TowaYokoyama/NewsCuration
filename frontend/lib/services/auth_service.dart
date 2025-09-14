@@ -65,4 +65,50 @@ class AuthService {
       return false;
     }
   }
+
+  static Future<void> addFavorite(int articleId) async {
+    final token = await getToken();
+    if (token == null) return;
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/articles/$articleId/favorite'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint('Failed to add favorite: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  static Future<void> removeFavorite(int articleId) async {
+    final token = await getToken();
+    if (token == null) return;
+
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/api/articles/$articleId/favorite'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint('Failed to remove favorite: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  static Future<Set<int>> getFavoriteIds() async {
+    final token = await getToken();
+    if (token == null) return {};
+
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/articles/me/favorites'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> body = json.decode(utf8.decode(response.bodyBytes));
+      return body.map<int>((dynamic item) => item['id'] as int).toSet();
+    } else {
+      debugPrint('Failed to get favorites: ${response.statusCode} - ${response.body}');
+      return {};
+    }
+  }
 }

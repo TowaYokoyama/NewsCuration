@@ -17,47 +17,43 @@ from scraper import get_rakuten_recipes, scrape_zenn_news, scrape_qiita_news
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Map frontend category names to Rakuten Recipe Category IDs
-RAKUTEN_CATEGORY_MAP = {
-    "coffee": "27-266",
-    "cooking": "30", # "Popular Menu"
-}
+@router.get("/{category_id}", response_model=List[schemas.Article])
+async def get_articles(category_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    指定されたカテゴリIDに基づいて記事やレシピを取得します。
+    - "programming" のような特別なカテゴリ名も受け付けます。
+    - それ以外は楽天のカテゴリID（例: "27-266"）として扱います。
+    """
+    logger.info(f"User: {current_user.email}, Category ID: {category_id}")
 
-async def get_articles_for_category(category: str) -> List[schemas.Article]:
-    """
-    カテゴリに基づいて、適切なソースから記事を取得するディスパッチャ関数。
-    """
-    logger.info(f"Fetching articles for category: {category}")
-    
-    if category == "programming":
+    if category_id == "programming":
+        # Scrape new articles
         zenn_task = scrape_zenn_news()
         qiita_task = scrape_qiita_news()
-        results = await asyncio.gather(zenn_task, qiita_task)
-        all_articles = results[0] + results[1]
-        logger.info(f"Total programming articles scraped: {len(all_articles)}")
-        if not all_articles:
-            return []
-        sample_size = min(15, len(all_articles))
-        sampled_articles = random.sample(all_articles, sample_size)
-        return [
-            schemas.Article(
-                id=10000 + i,
-                title=article.title,
-                url=article.url,
-                published_date=article.published_date,
-                summary=article.summary,
-                thumbnail_url=article.thumbnail_url,
-                sentiment=article.sentiment,
-            )
-            for i, article in enumerate(sampled_articles)
-        ]
+        scraped_results = await asyncio.gather(zenn_task, qiita_task)
+        
+        # Save new articles to the database
+        for article_model in scraped_results[0] + scraped_results[1]:
+            db_article = crud.get_article_by_url(db, url=article_model.url)
+            if not db_article:
+                article_schema = schemas.ArticleCreate(**article_model.model_dump())
+                crud.create_article(db, article=article_schema)
+        
+        # Ensure the database doesn't grow too large
+        crud.cull_old_articles(db, max_count=200)
 
-    elif category in RAKUTEN_CATEGORY_MAP:
-        category_id = RAKUTEN_CATEGORY_MAP[category]
+        # Fetch all programming articles from the DB and return a random sample
+        all_db_articles = crud.get_all_articles(db)
+        sample_size = min(15, len(all_db_articles))
+        return random.sample(all_db_articles, sample_size)
+    
+    else:
+        # Assume it's a Rakuten category ID
         rakuten_recipes = await get_rakuten_recipes(category_id)
+        # Note: These are not saved to the database
         return [
             schemas.Article(
-                id=30000 + i,
+                id=30000 + i, # Dummy ID
                 title=recipe.title,
                 url=recipe.url,
                 published_date=recipe.published_date,
@@ -68,21 +64,8 @@ async def get_articles_for_category(category: str) -> List[schemas.Article]:
             for i, recipe in enumerate(rakuten_recipes)
         ]
 
-    else:
-        return []
+# The rest of the file remains the same for favorites and recommendations
 
-@router.get("/{category}", response_model=List[schemas.Article])
-async def get_articles(category: str, current_user: models.User = Depends(get_current_user)):
-    """
-    指定されたカテゴリの記事を取得します。
-    
-    - **category**: 記事のカテゴリ (`coffee`, `cooking`, `programming`)
-    """
-    logger.info(f"User: {current_user.email}, Category: {category}")
-    articles = await get_articles_for_category(category)
-    return articles
-
-# New endpoint
 @router.get("/me/recommendations", response_model=List[schemas.Article])
 def get_recommendations(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """

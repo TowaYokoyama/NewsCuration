@@ -9,7 +9,7 @@ import logging
 import feedparser
 import asyncio
 
-from models import Article
+from models import Article, RecipeCategory
 from core.config import settings
 
 # ロガーを設定
@@ -131,3 +131,36 @@ async def scrape_qiita_news() -> List[Article]:
         return []
 
     return articles
+
+async def get_rakuten_categories(parent_category_id: str) -> List[RecipeCategory]:
+    """
+    楽天レシピカテゴリ一覧APIから指定された親カテゴリに属する中カテゴリを取得します。
+    """
+    logger.debug(f"get_rakuten_categories called for parent_category_id: {parent_category_id}")
+    app_id = "1063462595265589229" # Using user-provided ID for this session
+    url = f"https://app.rakuten.co.jp/services/api/Recipe/CategoryList/20170426?applicationId={app_id}"
+    categories = []
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10.0)
+            response.raise_for_status()
+            data = response.json()
+
+        medium_categories = data.get('result', {}).get('medium', [])
+        
+        # 親カテゴリIDに一致するものをフィルタリング
+        for cat in medium_categories:
+            if cat.get('parentCategoryId') == parent_category_id:
+                # Construct the full category ID string (e.g., "27-266")
+                full_category_id = f"{parent_category_id}-{cat['categoryId']}"
+                categories.append(
+                    RecipeCategory(categoryId=full_category_id, categoryName=cat['categoryName'])
+                )
+        
+        logger.debug(f"Found {len(categories)} sub-categories for parent {parent_category_id}.")
+
+    except Exception as e:
+        logger.error(f"[ERROR] An error occurred during Rakuten Category List API call: {e}")
+        return []
+
+    return categories

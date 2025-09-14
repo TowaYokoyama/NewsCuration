@@ -15,7 +15,7 @@ import schemas
 from core.security import get_current_user
 
 # Import the new auth router
-from api import auth, articles
+from api import auth, articles, categories
 
 # ロギング設定
 logging.basicConfig(level=logging.DEBUG)
@@ -42,6 +42,7 @@ app.add_middleware(
 # --- API Routers ---
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(articles.router, prefix="/api/articles", tags=["Articles"])
+app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 
 # --- API Endpoints ---
 @app.get("/", tags=["General"])

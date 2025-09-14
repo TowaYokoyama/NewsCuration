@@ -16,3 +16,10 @@ class Article(BaseModel):
     summary: Optional[str] = None
     thumbnail_url: Optional[str] = None
     sentiment: Optional[str] = "neutral"
+
+class RecipeCategory(BaseModel):
+    """
+    楽天レシピのカテゴリを表すモデル。
+    """
+    categoryId: str
+    categoryName: str

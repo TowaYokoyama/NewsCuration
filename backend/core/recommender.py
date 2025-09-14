@@ -44,6 +44,7 @@ def generate_recommendations(db: Session, user: models.User, top_n=10) -> list[m
     num_candidates = len(candidate_articles)
     favorite_vectors = tfidf_matrix[num_candidates:]
     user_profile = np.mean(favorite_vectors, axis=0)
+    user_profile = np.asarray(user_profile) # Convert from np.matrix to np.ndarray
 
     # 候補記事のベクトル
     candidate_vectors = tfidf_matrix[:num_candidates]
