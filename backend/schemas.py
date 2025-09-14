@@ -1,4 +1,5 @@
 # backend/schemas.py
+#APIでデータをやり取りする際の型定義
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 

@@ -26,10 +26,10 @@ async def get_rakuten_recipes(category_id: str) -> List[Article]:
     url = f"https://app.rakuten.co.jp/services/api/Recipe/CategoryRanking/20170426?applicationId={app_id}&categoryId={category_id}"
     articles = []
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient() as client:#非同期通信HTTPクライアントを作成ーーー→処理が終了と同時にクライアントが自動的に閉じられます
             response = await client.get(url, timeout=10.0)
-            response.raise_for_status()
-            data = response.json()
+            response.raise_for_status() #HTTPエラーが発生した場合に例外をスローする
+            data = response.json() #JSONで返す
 
         logger.debug(f"Successfully fetched {len(data['result'])} recipes from Rakuten API.")
 
@@ -59,7 +59,7 @@ async def scrape_zenn_news() -> List[Article]:
     articles = []
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10.0)
+            response = await client.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10.0) #ブラウザからのアクセスに見せかけることで、ブロックを回避する一般的なテクニック
             response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -98,7 +98,7 @@ async def scrape_qiita_news() -> List[Article]:
     articles = []
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10.0)
+            response = await client.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10.0)#ブラウザからのアクセスに見せかけることで、ブロックを回避する一般的なテクニック
             response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')

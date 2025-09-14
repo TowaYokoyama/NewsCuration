@@ -1,4 +1,4 @@
-# backend/api/articles.py
+# backend/api/articles.py セカンドペンギン
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -30,22 +30,22 @@ async def get_articles(category_id: str, db: Session = Depends(get_db), current_
         # Scrape new articles
         zenn_task = scrape_zenn_news()
         qiita_task = scrape_qiita_news()
-        scraped_results = await asyncio.gather(zenn_task, qiita_task)
+        scraped_results = await asyncio.gather(zenn_task, qiita_task) #並行に両方のタスクを取得する
         
         # Save new articles to the database
         for article_model in scraped_results[0] + scraped_results[1]:
-            db_article = crud.get_article_by_url(db, url=article_model.url)
+            db_article = crud.get_article_by_url(db, url=article_model.url) #dbにすでに同じURLがあるかどうかを確認する
             if not db_article:
-                article_schema = schemas.ArticleCreate(**article_model.model_dump())
-                crud.create_article(db, article=article_schema)
+                article_schema = schemas.ArticleCreate(**article_model.model_dump()) #スクレイピングで取得した記事データを、データベースに保存するためのスキーマに変換している **とは、辞書のキーと値をキーワードひき数として関数に渡す
+                crud.create_article(db, article=article_schema)#所得した記事wpデータベースに新規保存
         
         # Ensure the database doesn't grow too large
-        crud.cull_old_articles(db, max_count=200)
+        crud.cull_old_articles(db, max_count=200) #最大総数200件で古いやつを削除
 
         # Fetch all programming articles from the DB and return a random sample
-        all_db_articles = crud.get_all_articles(db)
-        sample_size = min(15, len(all_db_articles))
-        return random.sample(all_db_articles, sample_size)
+        all_db_articles = crud.get_all_articles(db) #dbからすべての記事の取得
+        sample_size = min(15, len(all_db_articles)) #最大で15件までの表示になるようにする
+        return random.sample(all_db_articles, sample_size)# ランダムに取得してきたサンプルサイズの指定してきた感じを返す
     
     else:
         # Assume it's a Rakuten category ID
@@ -53,7 +53,7 @@ async def get_articles(category_id: str, db: Session = Depends(get_db), current_
         # Note: These are not saved to the database
         return [
             schemas.Article(
-                id=30000 + i, # Dummy ID
+                id=30000 + i, # 1時的な ID
                 title=recipe.title,
                 url=recipe.url,
                 published_date=recipe.published_date,
@@ -74,6 +74,7 @@ def get_recommendations(db: Session = Depends(get_db), current_user: models.User
     recommended_articles = recommender.generate_recommendations(db=db, user=current_user)
     return recommended_articles
 
+
 @router.post("/{article_id}/favorite", response_model=schemas.User)
 def add_favorite(article_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     article = crud.get_article(db, article_id=article_id)
@@ -83,6 +84,7 @@ def add_favorite(article_id: int, db: Session = Depends(get_db), current_user: m
         return current_user
     return crud.favorite_article(db=db, user=current_user, article=article)
 
+
 @router.delete("/{article_id}/favorite", response_model=schemas.User)
 def remove_favorite(article_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     article = crud.get_article(db, article_id=article_id)
@@ -91,6 +93,7 @@ def remove_favorite(article_id: int, db: Session = Depends(get_db), current_user
     if article not in current_user.favorite_articles:
         raise HTTPException(status_code=404, detail="Article not in favorites")
     return crud.unfavorite_article(db=db, user=current_user, article=article)
+
 
 @router.get("/me/favorites", response_model=List[schemas.Article])
 def read_favorites(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

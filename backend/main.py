@@ -17,7 +17,7 @@ from core.security import get_current_user
 # Import the new auth router
 from api import auth, articles, categories
 
-# ロギング設定
+# ロギング設定 ーーー→開発や運用において、プログラムの動作状況やエラーを記録すためのもの
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
